@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-
+from dotenv import load_dotenv
 from flask import Flask, request, render_template, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -14,9 +14,16 @@ from helpers import (
     BASE_CURRENCY,
 )
 
-app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
+load_dotenv()
 
+app = Flask(__name__)
+
+app.secret_key = os.environ.get("SECRET_KEY")
+
+if not app.secret_key:
+    raise RuntimeError("SECRET_KEY is not set.")
+
+init_db()
 # Κάνει το format_money διαθέσιμο μέσα στα templates ως φίλτρο: {{ value | money("EUR") }}
 app.jinja_env.filters["money"] = format_money
 
@@ -42,7 +49,7 @@ def register():
 
         db = get_db()
         existing = db.execute(
-            "SELECT id FROM users WHERE username = ?", (username,)
+            "SELECT id FROM users WHERE username = %s", (username,)
         ).fetchone()
         if existing:
             db.close()
@@ -50,7 +57,7 @@ def register():
             return render_template("register.html")
 
         db.execute(
-            "INSERT INTO users (username, hash) VALUES (?, ?)",
+            "INSERT INTO users (username, hash) VALUES (%s, %s)",
             (username, generate_password_hash(password)),
         )
         db.commit()
@@ -72,7 +79,7 @@ def login():
 
         db = get_db()
         user = db.execute(
-            "SELECT * FROM users WHERE username = ?", (username,)
+            "SELECT * FROM users WHERE username = %s", (username,)
         ).fetchone()
         db.close()
 
@@ -102,7 +109,7 @@ def logout():
 def index():
     db = get_db()
     transactions = db.execute(
-        "SELECT * FROM transactions WHERE user_id = ? ORDER BY ticker, buy_date",
+        "SELECT * FROM transactions WHERE user_id = %s ORDER BY ticker, buy_date",
         (session["user_id"],),
     ).fetchall()
     db.close()
@@ -213,7 +220,7 @@ def add():
         db = get_db()
         db.execute(
             """INSERT INTO transactions (user_id, ticker, shares, buy_price, currency, buy_date)
-               VALUES (?, ?, ?, ?, ?, ?)""",
+               VALUES (%s, %s, %s, %s, %s, %s)""",
             (session["user_id"], ticker, shares, buy_price, currency, buy_date),
         )
         db.commit()
@@ -230,7 +237,7 @@ def add():
 def edit(transaction_id):
     db = get_db()
     transaction = db.execute(
-        "SELECT * FROM transactions WHERE id = ? AND user_id = ?",
+        "SELECT * FROM transactions WHERE id = %s AND user_id = %s",
         (transaction_id, session["user_id"]),
     ).fetchone()
 
@@ -273,8 +280,8 @@ def edit(transaction_id):
             return render_template("edit.html", transaction=transaction, currencies=SUPPORTED_CURRENCIES)
 
         db.execute(
-            """UPDATE transactions SET ticker = ?, shares = ?, buy_price = ?, currency = ?, buy_date = ?
-               WHERE id = ? AND user_id = ?""",
+            """UPDATE transactions SET ticker = %s, shares = %s, buy_price = %s, currency = %s, buy_date = %
+               WHERE id = %s AND user_id = %s""",
             (ticker, shares, buy_price, currency, buy_date, transaction_id, session["user_id"]),
         )
         db.commit()
@@ -292,7 +299,7 @@ def edit(transaction_id):
 def delete(transaction_id):
     db = get_db()
     db.execute(
-        "DELETE FROM transactions WHERE id = ? AND user_id = ?",
+        "DELETE FROM transactions WHERE id = %s AND user_id = %s",
         (transaction_id, session["user_id"]),
     )
     db.commit()
@@ -303,5 +310,4 @@ def delete(transaction_id):
 
 
 if __name__ == "__main__":
-    init_db()
-    app.run(debug=True)
+    app.run()
