@@ -1,0 +1,189 @@
+{% extends "layout.html" %}
+{% block title %}Portfolio · Stock Manager{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="fw-bold text-accent mb-0"><i class="bi bi-pie-chart me-2"></i>Το Portfolio μου</h2>
+  <a href="{{ url_for('add') }}" class="btn btn-accent"><i class="bi bi-plus-circle me-1"></i>Νέα Αγορά</a>
+</div>
+
+{% if api_key_missing %}
+<div class="alert alert-warning">
+  <i class="bi bi-exclamation-triangle me-1"></i>
+  Δεν έχει οριστεί <code>FINNHUB_API_KEY</code>, οπότε δεν εμφανίζονται τρέχουσες τιμές και κέρδη/ζημιές.
+  Δες το README για οδηγίες.
+</div>
+{% endif %}
+
+{% if not transactions %}
+<div class="alert alert-info">Δεν έχεις προσθέσει ακόμα καμία αγορά. <a href="{{ url_for('add') }}">Πρόσθεσε την πρώτη σου!</a></div>
+{% else %}
+
+<!-- Συνολικά στατιστικά -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card card-stat p-3 h-100">
+      <div class="stat-label">Σύνολο Επένδυσης</div>
+      <div class="stat-value">{{ total_investment | money(base_currency) }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card card-stat p-3 h-100">
+      <div class="stat-label">Τρέχουσα Αξία</div>
+      <div class="stat-value">
+        {% if total_current_value is not none %}{{ total_current_value | money(base_currency) }}{% else %}—{% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card card-stat p-3 h-100">
+      <div class="stat-label">Κέρδος / Ζημιά</div>
+      <div class="stat-value {% if total_profit_loss and total_profit_loss >= 0 %}text-positive{% elif total_profit_loss %}text-negative{% endif %}">
+        {% if total_profit_loss is not none %}
+          {{ "+" if total_profit_loss >= 0 else "" }}{{ total_profit_loss | money(base_currency) }}
+        {% else %}—{% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card card-stat p-3 h-100">
+      <div class="stat-label">Απόδοση %</div>
+      <div class="stat-value {% if total_return_pct and total_return_pct >= 0 %}text-positive{% elif total_return_pct %}text-negative{% endif %}">
+        {% if total_return_pct is not none %}
+          {{ "+" if total_return_pct >= 0 else "" }}{{ "%.2f"|format(total_return_pct) }}%
+        {% else %}—{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="row g-3 mb-4">
+  <div class="col-md-5">
+    <div class="card card-stat p-3 h-100">
+      <div class="stat-label mb-2">Κατανομή Χαρτοφυλακίου</div>
+      <canvas id="allocationChart" height="220"></canvas>
+    </div>
+  </div>
+  <div class="col-md-7">
+    <div class="card card-stat p-3 h-100">
+      <div class="stat-label mb-2">Επένδυση vs Τρέχουσα Αξία ανά Μετοχή</div>
+      <canvas id="comparisonChart" height="220"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Holdings ανά ticker -->
+<h5 class="fw-bold mb-2">Θέσεις</h5>
+<div class="table-responsive mb-4">
+  <table class="table table-holdings align-middle bg-white">
+    <thead>
+      <tr>
+        <th>Ticker</th>
+        <th class="text-end">Μετοχές</th>
+        <th class="text-end">Μ.Ο. Τιμής Αγοράς</th>
+        <th class="text-end">Τρέχουσα Τιμή</th>
+        <th class="text-end">Αξία</th>
+        <th class="text-end">Κ/Ζ</th>
+        <th class="text-end">Απόδοση</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for h in holdings %}
+      <tr>
+        <td class="fw-semibold">{{ h.ticker }}</td>
+        <td class="text-end">{{ "%.4f"|format(h.shares) }}</td>
+        <td class="text-end">{{ h.avg_buy_price_eur | money(base_currency) }}</td>
+        <td class="text-end">
+          {% if h.current_price_eur is not none %}{{ h.current_price_eur | money(base_currency) }}{% else %}<span class="text-muted">N/A</span>{% endif %}
+        </td>
+        <td class="text-end">
+          {% if h.market_value_eur is not none %}{{ h.market_value_eur | money(base_currency) }}{% else %}<span class="text-muted">N/A</span>{% endif %}
+        </td>
+        <td class="text-end {% if h.profit_loss_eur and h.profit_loss_eur >= 0 %}text-positive{% elif h.profit_loss_eur %}text-negative{% endif %}">
+          {% if h.profit_loss_eur is not none %}{{ "+" if h.profit_loss_eur >= 0 else "" }}{{ h.profit_loss_eur | money(base_currency) }}{% else %}<span class="text-muted">N/A</span>{% endif %}
+        </td>
+        <td class="text-end {% if h.return_pct and h.return_pct >= 0 %}text-positive{% elif h.return_pct %}text-negative{% endif %}">
+          {% if h.return_pct is not none %}{{ "+" if h.return_pct >= 0 else "" }}{{ "%.2f"|format(h.return_pct) }}%{% else %}<span class="text-muted">N/A</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Συναλλαγές -->
+<h5 class="fw-bold mb-2">Συναλλαγές</h5>
+<div class="table-responsive">
+  <table class="table table-holdings align-middle bg-white">
+    <thead>
+      <tr>
+        <th>Ticker</th>
+        <th class="text-end">Μετοχές</th>
+        <th class="text-end">Τιμή Αγοράς</th>
+        <th>Νόμισμα</th>
+        <th>Ημερομηνία</th>
+        <th class="text-end">Ενέργειες</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in transactions %}
+      <tr>
+        <td class="fw-semibold">{{ t.ticker }}</td>
+        <td class="text-end">{{ "%.4f"|format(t.shares) }}</td>
+        <td class="text-end">{{ t.buy_price | money(t.currency) }}</td>
+        <td><span class="badge badge-currency">{{ t.currency }}</span></td>
+        <td>{{ t.buy_date }}</td>
+        <td class="text-end">
+          <a href="{{ url_for('edit', transaction_id=t.id) }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-pencil"></i>
+          </a>
+          <form method="POST" action="{{ url_for('delete', transaction_id=t.id) }}" class="d-inline"
+                onsubmit="return confirm('Διαγραφή αυτής της συναλλαγής;');">
+            <button type="submit" class="btn btn-sm btn-outline-danger">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if transactions %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+  const chartData = {{ chart_data | tojson }};
+  const purplePalette = ["#4b2e83", "#7452b5", "#a084d8", "#c9b6ea", "#34215c", "#9b7fd1"];
+
+  new Chart(document.getElementById("allocationChart"), {
+    type: "doughnut",
+    data: {
+      labels: chartData.labels,
+      datasets: [{
+        data: chartData.market_value,
+        backgroundColor: purplePalette,
+      }]
+    },
+    options: { plugins: { legend: { position: "bottom" } } }
+  });
+
+  new Chart(document.getElementById("comparisonChart"), {
+    type: "bar",
+    data: {
+      labels: chartData.labels,
+      datasets: [
+        { label: "Επένδυση", data: chartData.investment, backgroundColor: "#a084d8" },
+        { label: "Τρέχουσα Αξία", data: chartData.market_value, backgroundColor: "#4b2e83" },
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { position: "bottom" } } }
+  });
+</script>
+{% endif %}
+{% endblock %}

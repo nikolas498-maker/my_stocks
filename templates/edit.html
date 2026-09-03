@@ -1,0 +1,48 @@
+{% extends "layout.html" %}
+{% block title %}Επεξεργασία · Stock Manager{% endblock %}
+{% block content %}
+
+<h3 class="fw-bold text-accent mb-4"><i class="bi bi-pencil me-2"></i>Επεξεργασία Συναλλαγής</h3>
+
+<div class="card card-stat p-4" style="max-width: 520px;">
+  <form method="POST" action="{{ url_for('edit', transaction_id=transaction.id) }}">
+    <div class="mb-3">
+      <label class="form-label">Ticker</label>
+      <input type="text" name="ticker" class="form-control" value="{{ transaction.ticker }}" required autofocus>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Αριθμός Μετοχών</label>
+      <input type="number" name="shares" class="form-control" step="0.0001" min="0.0001"
+             value="{{ transaction.shares }}" required>
+    </div>
+
+    <div class="row">
+      <div class="col-7 mb-3">
+        <label class="form-label">Τιμή Αγοράς (ανά μετοχή)</label>
+        <input type="number" name="buy_price" class="form-control" step="0.01" min="0.01"
+               value="{{ transaction.buy_price }}" required>
+      </div>
+      <div class="col-5 mb-3">
+        <label class="form-label">Νόμισμα</label>
+        <select name="currency" class="form-select">
+          {% for c in currencies %}
+          <option value="{{ c }}" {% if transaction.currency == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <label class="form-label">Ημερομηνία Αγοράς</label>
+      <input type="date" name="buy_date" class="form-control" value="{{ transaction.buy_date }}" required>
+    </div>
+
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-accent flex-grow-1">Αποθήκευση</button>
+      <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Άκυρο</a>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

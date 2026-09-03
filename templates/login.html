@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+{% block title %}Σύνδεση · Stock Manager{% endblock %}
+{% block content %}
+<div class="card auth-card">
+  <div class="card-body p-4">
+    <h3 class="card-title text-accent fw-bold mb-4"><i class="bi bi-box-arrow-in-right me-2"></i>Σύνδεση</h3>
+    <form method="POST" action="{{ url_for('login') }}">
+      <div class="mb-3">
+        <label class="form-label">Username</label>
+        <input type="text" name="username" class="form-control" required autofocus>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Κωδικός</label>
+        <input type="password" name="password" class="form-control" required>
+      </div>
+      <button type="submit" class="btn btn-accent w-100">Σύνδεση</button>
+    </form>
+    <p class="text-center mt-3 mb-0">
+      Δεν έχεις λογαριασμό; <a href="{{ url_for('register') }}">Εγγραφή</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
