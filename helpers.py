@@ -94,7 +94,7 @@ def get_current_price(ticker):
     }
 
     params = {
-        "code": symbol
+        "codes": symbol
     }
 
     try:
@@ -346,7 +346,7 @@ def get_current_prices(tickers):
     }
 
     params = {
-        "code": codes
+        "codes": codes
     }
 
     try:
