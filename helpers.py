@@ -98,6 +98,7 @@ def get_current_price(ticker):
     }
 
     try:
+        print("OANOR key prefix:", OANOR_API_KEY[:11])
         response = requests.get(
             OANOR_URL,
             headers=headers,
