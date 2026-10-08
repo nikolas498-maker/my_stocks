@@ -97,7 +97,7 @@ def get_current_price(ticker):
         "codes": symbol
     }
 
-    print("OANOR key prefix:", OANOR_API_KEY[:11])
+    
     try:
         response = requests.get(
             OANOR_URL,
@@ -349,7 +349,7 @@ def get_current_prices(tickers):
     params = {
         "codes": codes
     }
-
+    print("OANOR key prefix:", OANOR_API_KEY[:11], "len:", len(OANOR_API_KEY))
     try:
         response = requests.get(
             OANOR_URL,
