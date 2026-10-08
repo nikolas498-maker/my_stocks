@@ -286,7 +286,7 @@ def format_money(amount, currency=BASE_CURRENCY):
     return f"{amount:,.2f} {symbol}"
 
 
-def get_current_prices(tickers):
+def _get_prices_oanor(tickers):
     """
     Get current prices for multiple ATHEX stocks
     using a single OANOR API request.
@@ -349,7 +349,7 @@ def get_current_prices(tickers):
     params = {
         "codes": codes
     }
-    print("OANOR key prefix:", OANOR_API_KEY[:11], "len:", len(OANOR_API_KEY))
+    
     try:
         response = requests.get(
             OANOR_URL,
@@ -413,3 +413,45 @@ def get_current_prices(tickers):
     except (ValueError, TypeError, KeyError) as e:
         print(f"Error parsing OANOR response: {e}")
         return prices
+
+
+YAHOO_URL = "https://query1.finance.yahoo.com/v8/finance/chart/{}"
+
+
+def _get_prices_yahoo(tickers):
+    """Fallback: τιμές από το Yahoo Finance (ανεπίσημο endpoint)."""
+    prices = {}
+    now = time.time()
+
+    for ticker in tickers:
+        try:
+            response = requests.get(
+                YAHOO_URL.format(ticker.upper()),
+                params={"interval": "1d", "range": "1d"},
+                headers={"User-Agent": "Mozilla/5.0"},
+                timeout=10
+            )
+            response.raise_for_status()
+
+            meta = response.json()["chart"]["result"][0]["meta"]
+            price = float(meta["regularMarketPrice"])
+
+            prices[ticker] = price
+            _price_cache[ticker] = (now, price)
+
+        except (requests.RequestException, ValueError,
+                KeyError, TypeError, IndexError) as e:
+            print(f"Yahoo error for {ticker}: {e}")
+
+    return prices
+
+
+def get_current_prices(tickers):
+    """Πρώτα OANOR, και ό,τι λείπει από το Yahoo."""
+    prices = _get_prices_oanor(tickers)
+
+    missing = [t for t in tickers if t not in prices]
+    if missing:
+        prices.update(_get_prices_yahoo(missing))
+
+    return prices
